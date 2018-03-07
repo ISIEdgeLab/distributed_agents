@@ -19,25 +19,79 @@ if __name__ == '__main__':
     # configure and run tcpdump
     responses = tcpdump.Configure(dumpfile='/tmp/tcpdump.cap', agentlog='/tmp/tcpdump_agent.log')
     if not responses.success():
-        print('Error configuring tpcdump: {}'.format(responses.status()))
+        print('Error configuring tcpdump: {}'.format(responses.status()))
         exit(1)
 
     responses = tcpdump.StartCollection(destination='traf21')
     if not responses.success():
-        print('Error starting tpcdump: {}'.format(responses.status()))
+        print('Error starting tcpdump: {}'.format(responses.status()))
         exit(2)
 
     time.sleep(60)
 
     responses = tcpdump.StopCollection()
     if not responses.success():
-        print('Error stopping tpcdump: {}'.format(responses.status()))
+        print('Error stopping tcpdump: {}'.format(responses.status()))
         exit(3)
 
     responses = tcpdump.ArchiveDump(path='/zfs/edgelab/glawler/tcpdumps', tag='GTL')
     if not responses.success():
         print('Error archiving packet captures: {}'.format(responses.status()))
         exit(4)
+
+    tcpdump.close() 
+    exit(0)
+```
+
+Here's an example that starts Apache on servers, starts curl agents on clients to generate traffic, 
+runs tcpdump on a few nodes between the clients and servers, then achives the capture files.
+
+Note that all try/except and most error handing has been removed more easily read the code:
+
+```python
+#!/usr/bin/env python3
+
+import logging
+import time
+
+from tcpdump_agent import TcpDumpAgent, TcpDumpAgentException
+from http_server_agent import HttpServerAgent, HttpServerAgentException
+from http_client_agent import HttpClientAgent, HttpClientAgentException
+
+log = logging.getLogger(__name__)
+
+if __name__ == '__main__':
+    exp = 'smalltest.edgect'
+    apache_nodes = ['traf21']
+    apache_nodes_fqdn = ['{}.{}'.format(n, exp) for n in apache_nodes]
+    curl_nodes_fqdn = ['traf11.{}'.format(exp)]
+    tcpdump_nodes_fqdn = ['vrouter.{}'.format(exp), 'ct1.{}'.format(exp)]
+
+    # start/create agents.
+    apache = HttpServerAgent(apache_nodes_fqdn)
+    tcpdump = TcpDumpAgent(tcpdump_nodes_fqdn)
+    curl = HttpClientAgent(curl_nodes_fqdn)
+
+    # start servers, clients, and tcpdump
+    responses = apache.StartServer()
+    responses = tcpdump.Configure(dumpfile='/tmp/tcpdump.cap', agentlog='/tmp/tcpdump_agent.log')
+    responses = tcpdump.StartCollection(destination='traf21')
+    responses = curl.StartTraffic(servers=apache_nodes)
+
+    # let things happen
+    time.sleep(600)
+
+    # stop tcpdumps, servers, and clients. archive packet captures
+    responses = tcpdump.StopCollection()
+    responses = tcpdump.ArchiveDump(path='/zfs/edgelab/glawler/tcpdumps', tag='GTL')
+    responses = curl.StopTraffic()
+    responses = apache.StopServer()
+
+    # clean up and exit.
+    log.info('Experiment complete.')
+    curl.close()
+    apache.close()
+    tcpdump.close()
 
     exit(0)
 ```
