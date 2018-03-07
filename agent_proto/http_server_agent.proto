@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package http_server_agent;
+
+service HttpServerAgent {
+    rpc StartServer(StartServerArgs) returns (Response) {}
+    rpc StopServer(StopServerArgs) returns (Response) {}
+}
+
+message Response {
+    bool success = 1;
+    // Message about execution. Error message, status, etc.
+    string comment = 2;
+}
+
+message StartServerArgs {
+}
+
+message StopServerArgs {
+}

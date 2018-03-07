@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package iperf_agent;
+
+service IperfAgent {
+    rpc StartServer(ServerStartArgs) returns (AgentResponse) {} 
+    rpc StopServer(ServerStopArgs) returns (AgentResponse) {} 
+
+    rpc StartClient(ClientStartArgs) returns (AgentResponse) {} 
+    rpc StopClient(ClientStopArgs) returns (AgentResponse) {} 
+
+    rpc Status(StatusArgs) returns (stream IperfStatus) {}
+}
+
+message AgentResponse {
+    bool success = 1;
+}
+
+message ServerStartArgs {
+    bool tcp = 1;
+}
+
+message ServerStopArgs {
+}
+
+message ClientStartArgs {
+    string server = 1;
+    bool tcp = 2;
+    int32 ttl = 3;
+}
+
+message ClientStopArgs {
+}
+
+message StatusArgs {
+}
+
+message IperfStatus {
+    string transfer = 1;
+    string bandwidth = 2;
+    int32 retries = 3;
+}

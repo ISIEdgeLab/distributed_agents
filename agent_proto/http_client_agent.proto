@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package http_client_agent;
+
+service HttpClientAgent {
+    rpc Configure(ConfigArgs) returns (Response) {}
+    rpc StartTraffic(StartTrafficArgs) returns (Response) {}
+    rpc StopTraffic(StopTrafficArgs) returns (Response) {}
+    rpc ChangeTraffic(ChangeTrafficArgs) returns(Response) {}
+}
+
+message Response {
+    bool success = 1;
+    // Message about execution. Error message, status, etc.
+    string comment = 2;
+}
+
+message ConfigArgs {
+    // "sizes" is eval'd as python code and cast to an int. python random module can be used.
+    // sizes = "1000" gives 1000 bytes per packet.
+    // sizes = "random.randint(1000,2000)" gives a packet between 1000 and 2000 bytes randomly.
+    string sizes = 1;
+    int32 rate_limit = 2;
+    bool use_socks = 3;
+    string socks_server = 4; 
+    int32 socks_port = 5;
+    int32 socks_version = 6;
+    int32 local_port = 7;
+}
+
+message StartTrafficArgs {
+    repeated string servers = 1;
+}
+
+message StopTrafficArgs {
+
+}
+
+message ChangeTrafficArgs {
+    // Can be negative or positive to decrease/increase.
+    int32 stepsize = 1;
+}

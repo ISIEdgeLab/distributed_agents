@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+// import "google/protobuf/timestamp.proto";
+
+package tcpdump_agent;
+
+service TcpDumpAgent {
+    rpc Configure(Config) returns (Response) {}
+    rpc StartCollection(StartArgs) returns (Response) {}
+    rpc StopCollection(StopArgs) returns (Response) {}
+    rpc ArchiveDump(ArchiveArgs) returns (Response) {}
+
+    rpc Status(StatusArgs) returns (stream TcpDumpStatus) {}
+}
+
+message Response {
+    bool success = 1;
+    // Message about execution. Error message, status, etc.
+    string comment = 2;
+}
+
+message StatusArgs {
+}
+
+message TcpDumpStatus {
+    int32 captured = 1;
+    bool active = 2;
+    // google.protobuf.Timestamp Timestamp = 3;
+}
+
+message Config {
+    // Where to write the captured packets on the agent machine. 
+    string dumpfile = 1;
+    // Where to write stdout/stderr of the tcpdump agent instance. 
+    string agentlog = 2;
+}
+
+message StartArgs {
+    string expression = 1;
+    string destination = 2;
+    string dump_args = 3;
+    string capture_address = 4;
+}
+
+message StopArgs {
+    bool force = 1;
+}
+
+message ArchiveArgs {
+    string path = 1;
+    // If not given, a timestamped name will be used.
+    string filename = 2;
+    // If given, this tag will be placed in the archived file name.
+    string tag = 3;
+}
+

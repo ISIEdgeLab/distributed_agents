@@ -1,0 +1,2 @@
+Protobuf files that describe the agent interfaces go here. These will be used to 
+generate client side and server side agent code. 
