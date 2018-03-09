@@ -29,6 +29,7 @@ class TcpDumpAgentServicer(pb_grpc.TcpDumpAgentServicer):
     def Configure(self, request, context):
         self.dumpfile = request.dumpfile
         self.agentlog = request.agentlog
+        log.info('configured: dumpfile: {}, agentlog: {}'.format(self.dumpfile, self.agentlog))
         return pb.Response(success=True, comment="")
 
     def StartCollection(self, request, context):

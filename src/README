@@ -1,3 +1,5 @@
 This is handcrafted non-generated code that works. 
-The *_agent.py files are now generated. Soon the stub servicer files will be as well. Although
-the non-stub servicer files that work correctly are here for safe keeping for now.
+The *_agent.py files are now generated. 
+The *servicer.py stub files are generated.
+
+Working servicer files still in this directory.
