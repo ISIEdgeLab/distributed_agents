@@ -46,7 +46,7 @@ if __name__ == '__main__':
 Here's an example that starts Apache on servers, starts curl agents on clients to generate traffic, 
 runs tcpdump on a few nodes between the clients and servers, then achives the capture files.
 
-Note that all try/except and most error handing has been removed more easily read the code:
+Note that all try/except and most error handing has been removed to make the code more easily read.
 
 ```python
 #!/usr/bin/env python3
@@ -61,11 +61,20 @@ from http_client_agent import HttpClientAgent, HttpClientAgentException
 log = logging.getLogger(__name__)
 
 if __name__ == '__main__':
-    exp = 'smalltest.edgect'
-    apache_nodes = ['traf21']
-    apache_nodes_fqdn = ['{}.{}'.format(n, exp) for n in apache_nodes]
-    curl_nodes_fqdn = ['traf11.{}'.format(exp)]
-    tcpdump_nodes_fqdn = ['vrouter.{}'.format(exp), 'ct1.{}'.format(exp)]
+    # in a real script these would be read in from a file.
+    apache_nodes = [
+        'traf21'
+    ]
+    apache_nodes_fqdn = [
+        'traf21.smalltest.edgect'
+    ]
+    curl_nodes_fqdn = [
+        'traf11.smalltest.edgect'
+    ]
+    tcpdump_nodes_fqdn = [
+        'vrouter.smalltest.edgect',
+        'ct1.smalltest.edgect'
+    ]
 
     # start/create agents.
     apache = HttpServerAgent(apache_nodes_fqdn)
