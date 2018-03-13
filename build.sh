@@ -28,15 +28,18 @@ python3 -m grpc_tools.protoc \
     ${PROTO_DIR}/*.proto \
     ${AGENT_PROTO_DIR}/*.proto
 
+if [[ $? -ne 0 ]]; then
+    echo Error building python agents from proto filesm aborting.
+    echo See build errors above. 
+    exit 1
+fi
+
 # generate the dgrpc client-side files. 
 # (This auto install of the protoc3 compiler should be elsewhere.)
 if [ ! -e ${PROTOC} ]; then
-    pushd /tmp
-    unzip ${PROTOC3ZIP} -d protoc
-    sudo cp -v protoc/bin/protoc ${PROTOC}
-    sudo cp -v -r protoc/include/* /usr/local/bin/include
-    popd
-
+    unzip ${PROTOC3ZIP} -d /tmp/protoc
+    sudo cp -v /tmp/protoc/bin/protoc ${PROTOC}
+    sudo cp -v -r /tmp/protoc/include/* /usr/local/bin/include
     sudo apt install -y protobuf-compiler
     sudo apt install -y python-protobuf
 fi
