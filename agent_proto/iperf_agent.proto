@@ -3,13 +3,11 @@ syntax = "proto3";
 package iperf_agent;
 
 service IperfAgent {
-    rpc StartServer(ServerStartArgs) returns (Response) {} 
-    rpc StopServer(ServerStopArgs) returns (Response) {} 
+    rpc Configure(ConfigureArgs) returns (Response) {}
+    rpc StartTraffic(StartTrafficArgs) returns (Response) {}
+    rpc StopTraffic(StopTrafficArgs) returns (Response) {}
 
-    rpc StartClient(ClientStartArgs) returns (Response) {} 
-    rpc StopClient(ClientStopArgs) returns (Response) {} 
-
-    rpc Status(StatusArgs) returns (stream IperfStatus) {}
+    rpc Status(StatusArgs) returns (stream StatusArgs) {}
 }
 
 message Response {
@@ -17,27 +15,25 @@ message Response {
     string comment = 2;
 }
 
-message ServerStartArgs {
-    bool tcp = 1;
+message ConfigureArgs {
+    message Flow {
+        string client = 1;
+        string server = 2;
+    }
+    repeated Flow flow = 1;
 }
 
-message ServerStopArgs {
+message StartTrafficArgs {
 }
 
-message ClientStartArgs {
-    string server = 1;
-    bool tcp = 2;
-    int32 ttl = 3;
-}
-
-message ClientStopArgs {
+message StopTrafficArgs {
 }
 
 message StatusArgs {
-}
+    bool success = 1;
+    string comment = 2;
 
-message IperfStatus {
-    string transfer = 1;
-    string bandwidth = 2;
-    int32 retries = 3;
+    string transfer = 3;
+    string bandwidth = 4;
+    int32 retries = 5;
 }
