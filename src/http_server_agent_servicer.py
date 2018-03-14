@@ -5,6 +5,8 @@ import stat
 import platform
 from subprocess import check_output, CalledProcessError, call
 
+import sys
+sys.path.append('./pb')
 import http_server_agent_pb2 as pb
 import http_server_agent_pb2_grpc as pb_grpc
 

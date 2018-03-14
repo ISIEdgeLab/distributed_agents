@@ -4,7 +4,7 @@ syntax = "proto3";
 
 package tcpdump_agent;
 
-service TcpDumpAgent {
+service TcpdumpAgent {
     rpc Configure(Config) returns (Response) {}
     rpc StartCollection(StartArgs) returns (Response) {}
     rpc StopCollection(StopArgs) returns (Response) {}

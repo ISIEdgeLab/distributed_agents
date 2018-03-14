@@ -7,6 +7,9 @@ from subprocess import Popen, STDOUT, check_output, CalledProcessError
 from netifaces import interfaces, ifaddresses
 from socket import AF_INET, gethostbyname, gethostname
 
+import sys
+sys.path.append('./pb')
+
 import tcpdump_agent_pb2 as pb
 import tcpdump_agent_pb2_grpc as pb_grpc
 
@@ -14,11 +17,11 @@ log = logging.getLogger(__name__)
 
 # Add instance of this agent to the server.
 def AddServicer(server):
-    pb_grpc.add_TcpDumpAgentServicer_to_server(TcpDumpAgentServicer(), server)
+    pb_grpc.add_TcpdumpAgentServicer_to_server(TcpdumpAgentServicer(), server)
 
-class TcpDumpAgentServicer(pb_grpc.TcpDumpAgentServicer):
+class TcpdumpAgentServicer(pb_grpc.TcpdumpAgentServicer):
     def __init__(self):
-        log.debug('TcpDumpAgentServicer created.')
+        log.debug('TcpdumpAgentServicer created.')
 
         self.dumpfile = path_join('/', 'tmp', 'tcpdump.cap')
         self.agentlog = path_join('/', 'tmp', 'tcpdump_agent.log')

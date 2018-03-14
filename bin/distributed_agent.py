@@ -1,6 +1,8 @@
 import logging
 import grpc
 
+import sys
+sys.path.append('./pb')  # GTL ugh.
 import agent_server_pb2_grpc as pb_grpc
 import agent_server_pb2 as pb
 

@@ -16,11 +16,15 @@ message Response {
 }
 
 message ConfigureArgs {
-    message Flow {
-        string client = 1;
-        string server = 2;
-    }
-    repeated Flow flow = 1;
+    // This also works. The map type is just this under the hood.
+    // message Flow {
+    //     string client = 1;
+    //     string server = 2;
+    // }
+    // repeated Flow flow = 1;
+
+    // "client" maps to "server"
+    map<string, string> flows = 1;
 }
 
 message StartTrafficArgs {

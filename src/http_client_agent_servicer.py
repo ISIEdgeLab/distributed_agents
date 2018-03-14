@@ -4,6 +4,8 @@ import threading
 import time
 import random
 
+import sys
+sys.path.append('./pb')
 import http_client_agent_pb2 as pb
 import http_client_agent_pb2_grpc as pb_grpc
 
