@@ -3,7 +3,7 @@
 import logging
 import time
 
-from tcpdump_agent import TcpDumpAgent, TcpDumpAgentException
+from tcpdump_agent import TcpdumpAgent, TcpdumpAgentException
 from http_server_agent import HttpServerAgent, HttpServerAgentException
 from http_client_agent import HttpClientAgent, HttpClientAgentException
 
@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     # start/create agents.
     apache = HttpServerAgent(apache_nodes_fqdn)
-    tcpdump = TcpDumpAgent(tcpdump_nodes_fqdn)
+    tcpdump = TcpdumpAgent(tcpdump_nodes_fqdn)
     curl = HttpClientAgent(curl_nodes_fqdn)
 
     def clean_and_exit(msg):

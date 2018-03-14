@@ -2,8 +2,9 @@
 
 import logging
 import time
+from sys import argv
 
-from tcpdump_agent import TcpDumpAgent, TcpDumpAgentException
+from tcpdump_agent import TcpdumpAgent, TcpdumpAgentException
 
 log = logging.getLogger(__name__)
 logging.basicConfig(
@@ -19,28 +20,25 @@ def exit_with_msg(msg, agent, resps):
 if __name__ == '__main__':
     nodes = ['vrouter.smalltest.edgect', 'ct1.smalltest.edgect']
     try:
-        agent = TcpDumpAgent(nodes)
+        agent = TcpdumpAgent(nodes)
         responses = agent.Configure('/tmp/tcpdump.cap', '/tmp/tcpdump_agent.log')
         if not responses.success():
             exit_with_msg('Error configuring', agent, responses)
 
-        responses = agent.StartCollection(destination='traf21')
-        if not responses.success():
-            exit_with_msg('Error starting collection', agent, responses)
+        if argv[1] == 'start':
+            responses = agent.StartCollection(destination='traf21')
+            if not responses.success():
+                exit_with_msg('Error starting collection', agent, responses)
+        else:
+            responses = agent.StopCollection()
+            if not responses.success():
+                exit_with_msg('Error stopping collection', agent, responses)
 
-        sleep_time = 10
-        log.info('Collecting for {} seconds.'.format(sleep_time))
-        time.sleep(sleep_time)
+            responses = agent.ArchiveDump('/zfs/edgelab/glawler/tcpdumps', filename=None, tag='GTL')
+            if not responses.success():
+                exit_with_msg('Error stopping collection', agent, responses)
 
-        responses = agent.StopCollection()
-        if not responses.success():
-            exit_with_msg('Error stopping collection', agent, responses)
-
-        responses = agent.ArchiveDump('/zfs/edgelab/glawler/tcpdumps', filename=None, tag='GTL')
-        if not responses.success():
-            exit_with_msg('Error stopping collection', agent, responses)
-
-    except TcpDumpAgentException as e:
+    except TcpdumpAgentException as e:
         log.critical(e)
         agent.close()
         exit(1)

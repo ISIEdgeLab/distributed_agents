@@ -32,7 +32,7 @@ class AgentServerServicer(pb_grpc.AgentServerServicer):
                     'python-flask'
                 ]
             },
-            'TcpDumpAgent': {
+            'TcpdumpAgent': {
                 'dependencies': [
                     'python-netifaces', 'tcpdump'
                 ]
@@ -65,10 +65,10 @@ class AgentServerServicer(pb_grpc.AgentServerServicer):
         # very hacky. This will need to be replaced. Only import the agents when they are being loaded. 
         # GTL TODO: make this load dynamically. Maybe via an IDL file...
         if name in self._servicer_map:
-            if name == 'TcpDumpAgent':
-                from tcpdump_agent_servicer import AddServicer as AddTcpDumpService
-                # self._servicer_map['TcpDumpAgent']['servicer'] = AddTcpDumpService
-                AddTcpDumpService(self._server)
+            if name == 'TcpdumpAgent':
+                from tcpdump_agent_servicer import AddServicer as AddTcpdumpService
+                # self._servicer_map['TcpdumpAgent']['servicer'] = AddTcpdumpService
+                AddTcpdumpService(self._server)
             elif name == 'HttpServerAgent':
                 from http_server_agent_servicer import AddServicer as AddHttpServerServicer
                 # self._servicer_map['HttpServerAgent']['servicer'] = AddHttpServerServicer
