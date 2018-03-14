@@ -33,7 +33,10 @@ def traverse(proto_file):
 
 if __name__ == '__main__':
     # Read request message from stdin
-    request_data = sys.stdin.read()
+    request_data = sys.stdin.buffer.read()
+
+    with open('request.bin', 'wb') as fd:
+        fd.write(request_data)
 
     # Parse request
     request = plugin.CodeGeneratorRequest()
@@ -55,21 +58,22 @@ if __name__ == '__main__':
                 data.update({
                     'name': item.name,
                     'type': 'Message',
-                    'properties': [{'name': f.name, 'type': f.type} for f in item.field],
+                    'properties': [str(f) for f in item.field],
                     'item': item,
+                    'nested': [str(n) for n in item.nested_type],
                 })
             elif isinstance(item, EnumDescriptorProto):
                 data.update({
                     'name': item.name,
                     'type': 'Enum',
-                    'values': [{'name': v.name, 'value': v.number} for v in item.value],
+                    'values': [str(v) for v in item.value],
                     'item': item,
                 })
             elif isinstance(item, ServiceDescriptorProto):
                 data.update({
                     'name': item.name,
                     'type': 'Service',
-                    'methods': item.method,
+                    'methods': [str(m).split('\n') for m in item.method],
                     'item': item
                 })
 
