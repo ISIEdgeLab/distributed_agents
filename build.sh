@@ -3,6 +3,7 @@
 AGENT_PROTO_DIR=agent_proto
 PROTO_DIR=./proto 
 PYOUT_DIR=./dgrpc
+GRPC_PYOUT_DIR=${PYOUT_DIR}/pb
 PROTOC3ZIP=./deps/protoc-3.5.1-linux-x86_64.zip
 DGRPC_PARSER=./bin/dgrpc_parser.py
 # we use protoc3 to support protobuf 3 syntax even though we don't really use it.
@@ -11,8 +12,10 @@ PROTOC=/usr/local/bin/protoc3
 echo Cleaning the build dir ${PYOUT_DIR}
 if [ ! -e ${PYOUT_DIR} ]; then 
     mkdir ${PYOUT_DIR} 
+    mkdir ${GRPC_PYOUT_DIR} 
 else
     sudo rm -rf ${PYOUT_DIR}/*
+    mkdir ${GRPC_PYOUT_DIR} 
 fi
 
 #
@@ -23,8 +26,8 @@ echo Generating protobuf and grpc python code.
 python3 -m grpc_tools.protoc \
     -I${PROTO_DIR} \
     -I${AGENT_PROTO_DIR} \
-    --python_out=${PYOUT_DIR} \
-    --grpc_python_out=${PYOUT_DIR} \
+    --python_out=${GRPC_PYOUT_DIR} \
+    --grpc_python_out=${GRPC_PYOUT_DIR} \
     ${PROTO_DIR}/*.proto \
     ${AGENT_PROTO_DIR}/*.proto
 
@@ -56,7 +59,6 @@ cp -v src/*_servicer.py ${PYOUT_DIR}
 
 # hack for extra files for apache. This will be cleaned up somehow.
 cp -v src/traffic_gen* ${PYOUT_DIR}
-
 
 # This file is not generated, but maybe should be. It's the base class for the distribute (client-side) agents.
 cp ./bin/distributed_agent.py ${PYOUT_DIR}
