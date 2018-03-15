@@ -1,7 +1,8 @@
 import logging
 import grpc
-
 import sys
+from concurrent import futures
+
 sys.path.append('./pb')  # GTL ugh.
 import agent_server_pb2_grpc as pb_grpc
 import agent_server_pb2 as pb
@@ -45,14 +46,14 @@ class DistributedAgent:
 
         # create the client-side stub agent we'll use to talk to the server-side agent.
         try:
-            for node in self.nodes:
+            for n in self.nodes:
                 self.agents[n] = agent_stub(self.channels[n])
         except Exception as e:
             msg = 'Error creating agent client stub: {}'.format(e)
             log.critical(msg)
             raise DistributedAgentException(msg)
 
-        log.info('Loaded {} (server-side)'.format(name))
+        log.info('Loaded {} (server-side) on {}'.format(name, ', '.join(self.nodes)))
 
     def close(self):
         '''Cleanup and close any existing agents.'''
@@ -73,23 +74,56 @@ class DistributedAgent:
             arg args is a protbuf class instance that holds the args.
         '''
         responses = DistributedAgentResponses()
+        future_responses = {}
         for node, agent in self.agents.items():
             try:
                 func = getattr(agent, method, None)
                 if not func:
                     raise DistributedAgentException('No such method {} in agent {}.'.format(method, agent))
-
-                r = func(args) 
+                
+                log.debug('On node {}, calling: {}(...)'.format(node, method))
+                future_responses[node] = func.future(args) 
             except grpc.RpcError as e:
                 log.critical('RPC error: {}'.format(e))
                 raise DistributedAgentException(e)
 
+        for node in self.agents.keys():
+            # still sequential responses, but at least they are called in parallel
+            r = future_responses[node].result()
             comment = '' if not r.comment else ': {}'.format(r.comment)
             log.debug('{}: {}() --> {}{}'.format(node.split('.')[0], method, r.success, comment))
-
             responses.add(node, r)
 
         return responses
+
+    def blocking_call_server_streaming(self, method, args):
+        '''Much like blocking_call, but yields responses when they happen. Should only be invoked on 
+        agent methods that return a stream of things.
+
+        Note that the implementation is still sequential, so the order of return will be the order
+        of agents. Calls do not happen in parallel (yet). 
+        '''
+        for node, agent in self.agents.items():
+            responses = DistributedAgentResponses()
+            try:
+                func = getattr(agent, method, None)
+                if not func:
+                    raise DistributedAgentException('No such method {} in agent {}.'.format(method, agent))
+                
+                log.debug('On node {}, calling: {}(...)'.format(node, method))
+                for r in func(args):
+                    log.debug('stream response: {} ({})'.format(r, type(r)))
+                    yield r
+            except grpc.RpcError as e:
+                log.critical('RPC error: {}'.format(e))
+                raise DistributedAgentException(e)
+            
+            # comment = '' if not r.comment else ': {}'.format(r.comment)
+            # log.debug('{}: {}() --> {}{}'.format(node.split('.')[0], method, r.success, comment))
+
+            # responses.add(node, r)
+            # yield responses
+        # return None
 
 '''Aux class that exists simply as a shim between protobuffer classes and python. It will mirror exactly
 the protobuf Response data.'''
