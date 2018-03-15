@@ -154,7 +154,7 @@ def generate_client_python(proto_file, response):
         f.content += client_header.format(proto_file.package, proto_file.package)
         
         # make a class specific exception. 
-        f.content += 'class {}Exception(Exception):\n'.format(service.name)
+        f.content += 'class {}Exception(DistributedAgentException):\n'.format(service.name)
         f.content += '    pass\n'
         f.content += '\n'
 
@@ -182,7 +182,10 @@ def generate_client_python(proto_file, response):
 
             f.content += '    # returns --> pb.{}\n'.format(message2invocation(out_message))
             f.content += '    def {}({}):\n'.format(method.name, ', '.join(['self'] + def_args))
-            f.content += '       return self.blocking_call(\n'
+            if method.server_streaming:
+                f.content += '       return self.blocking_call_server_streaming(\n'
+            else:
+                f.content += '       return self.blocking_call(\n'
             f.content += '           \'{}\',\n'.format(method.name)
             f.content += '           pb.{}({})\n'.format(in_message_name, ', '.join(invoke_args))
             f.content += '       )\n'
@@ -204,7 +207,7 @@ def generate_servicer_python(proto_file, response):
         f.content += '    pb_grpc.add_{}_to_server({}(), server)\n'.format(class_name, class_name)
         f.content += '\n'
 
-        f.content += 'class {}Exception(Exception):\n'.format(class_name)
+        f.content += 'class {}Exception(DistributedAgentException):\n'.format(class_name)
         f.content += '    pass\n'
         f.content += '\n'
         f.content += 'class {}(pb_grpc.{}):\n'.format(class_name, class_name)
