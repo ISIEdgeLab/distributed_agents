@@ -20,9 +20,9 @@ class AgentServerServicer(pb_grpc.AgentServerServicer):
         # we do not do dynamic loading at the moment. The servicer must know
         # at runtime about all agents and dependencies that can be loaded.
         self._servicer_map = {
-            'IPerfAgent': {
+            'IperfAgent': {
                 'dependencies': [
-                    'iperf3'
+                    # 'iperf3'
                 ]
             },
             'HttpServerAgent': {
