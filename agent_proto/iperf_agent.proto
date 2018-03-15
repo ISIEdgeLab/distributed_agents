@@ -7,7 +7,7 @@ service IperfAgent {
     rpc StartTraffic(StartTrafficArgs) returns (Response) {}
     rpc StopTraffic(StopTrafficArgs) returns (Response) {}
 
-    rpc Status(StatusArgs) returns (stream StatusArgs) {}
+    rpc Status(StatusArgs) returns (stream StatusResponse) {}
 }
 
 message Response {
@@ -16,15 +16,15 @@ message Response {
 }
 
 message ConfigureArgs {
-    // This also works. The map type is just this under the hood.
-    // message Flow {
-    //     string client = 1;
-    //     string server = 2;
-    // }
-    // repeated Flow flow = 1;
-
     // "client" maps to "server"
     map<string, string> flows = 1;
+    // If given append this string to iperf command line on client.
+    string client_args = 2;
+    string logdir = 3;
+    // If given, include this in the log file name for easy marking.
+    string runname = 4; 
+    // If True, use JSON output.
+    bool json = 5;
 }
 
 message StartTrafficArgs {
@@ -34,6 +34,11 @@ message StopTrafficArgs {
 }
 
 message StatusArgs {
+    // if given, onlyu return the status of the given hosts, else return all.
+    repeated string hosts = 1;
+}
+
+message StatusResponse {
     bool success = 1;
     string comment = 2;
 
