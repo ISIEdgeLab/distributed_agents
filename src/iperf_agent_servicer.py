@@ -157,21 +157,21 @@ class IperfAgentServicer(pb_grpc.IperfAgentServicer):
         log.debug("Invoking: Status(...)")
         hosts = request.hosts
 
+        count = 0
         while self._proc:
-            count = 0
-            if self._nodename in hosts:
+            count += 1
+            if not hosts or self._nodename in hosts:
                 # fake it until you make it.
-                count += 1
-                yield pb.Response(
+                yield pb.StatusResponse(
                     success=True,
                     comment='status at <timestamp>: foo/bar/baz',
                     transfer='200ms',
                     bandwidth='not that great',
                     retries=count
                 )
-            # sleep(1)
-
-        yield  pb.StatusArgs(success=False, comment='No iperf process running.')
+            sleep(1)
+            if count == 5:
+                break
 
     def _confirm_configuration(self):
         log.info('Checking given configuration...')
