@@ -2,6 +2,8 @@ import logging
 import grpc
 import sys
 from concurrent import futures
+from threading import Thread
+from queue import Queue
 
 sys.path.append('./pb')  # GTL ugh.
 import agent_server_pb2_grpc as pb_grpc
@@ -121,27 +123,48 @@ class DistributedAgent:
         Note that the implementation is still sequential, so the order of return will be the order
         of agents. Calls do not happen in parallel (yet). 
         '''
-        for node, agent in self.agents.items():
-            responses = DistributedAgentResponses()
+        produce_threads = []
+        q = Queue()
+
+        # local function that will be threaded to read responses. 
+        def read_responses(func, args, node):
+            log.debug('Read reponses thread created.')
+            log.debug('On node {}, calling: {}(...)'.format(node, method))
             try:
-                func = getattr(agent, method, None)
-                if not func:
-                    raise DistributedAgentException('No such method {} in agent {}.'.format(method, agent))
-                
-                log.debug('On node {}, calling: {}(...)'.format(node, method))
                 for r in func(args):
                     log.debug('stream response: {} ({})'.format(r, type(r)))
-                    yield r
+                    q.put((node, r))
             except grpc.RpcError as e:
                 log.critical('RPC error: {}'.format(e))
                 raise DistributedAgentException(e)
-            
-            # comment = '' if not r.comment else ': {}'.format(r.comment)
-            # log.debug('{}: {}() --> {}{}'.format(node.split('.')[0], method, r.success, comment))
 
-            # responses.add(node, r)
-            # yield responses
-        # return None
+            q.put((None, None))
+
+        # For each agent create a producer thread that feeds the queue
+        for node, agent in self.agents.items():
+            func = getattr(agent, method, None)
+            if not func:
+                raise DistributedAgentException('No such method {} in agent {}.'.format(method, agent))
+
+            t = Thread(target=read_responses, args=(func, args, node, ))
+            produce_threads.append(t)
+            t.start()
+       
+        # Now read the queue until we see all producers are done.
+        done_count = 0
+        while done_count != len(produce_threads):
+            node, r = q.get()
+            if r == None:
+                done_count += 1
+            else:
+                comment = '' if not r.comment else ': {}'.format(r.comment)
+                log.debug('{}: --> {}'.format(node.split('.')[0], r))
+                yield node, r
+
+            q.task_done()
+
+        for t in produce_threads:
+            t.join()
 
 '''Aux class that exists simply as a shim between protobuffer classes and python. It will mirror exactly
 the protobuf Response data.'''
