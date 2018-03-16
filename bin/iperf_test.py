@@ -45,12 +45,8 @@ if __name__ == '__main__':
         if not responses.success():
             _error('Error running cmd {} on iperf: {}'.format(cmd, responses.status()))
 
-        # check status a few times.
-        count = 5
-        while count:
-            for response in iperf.Status(['ct1', 'ct2']):
-                log.info('Status: {}'.format(response))
-                count = count-1
+        for node, response in iperf.Status(['ct1', 'ct2']):
+            log.info('Status from {}: {}'.format(node, response))
 
     except IperfAgentException as e:
         _error('Exception when running: {}'.format(e))
