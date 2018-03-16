@@ -29,11 +29,20 @@ class DistributedAgent:
         # open all channels, create agent_server client-side stubs, and Load() the agent on the server.
         log.info('Loading {}'.format(name))
         try:
-            for n in self.nodes:
-                if not n in self.channels:
-                    self.channels[n] = grpc.insecure_channel('{}:{}'.format(n, self.port))
-                    self.server_agents[n] = pb_grpc.AgentServerStub(self.channels[n])
-                    response = self.server_agents[n].Load(pb.AgentConfig(name=name))
+            load_calls = {}
+            with futures.ThreadPoolExecutor(len(self.nodes)) as fte:
+                for n in self.nodes:
+                    if not n in self.channels:
+                        self.channels[n] = grpc.insecure_channel('{}:{}'.format(n, self.port))
+                        self.server_agents[n] = pb_grpc.AgentServerStub(self.channels[n])
+                        
+                        # submit calls to Load the server-soide agent to the future.
+                        # The future call maps to the node name.
+                        load_calls[fte.submit(self.server_agents[n].Load, pb.AgentConfig(name=name))] = n
+
+                for f in futures.as_completed(load_calls):
+                    n = load_calls[f]
+                    response = f.result()
                     if not response.success:
                         raise DistributedAgentException(
                             'Error loading {} on node {}: {}'.format(name, n, response.comment))
@@ -44,7 +53,8 @@ class DistributedAgent:
             log.critical(msg)
             raise DistributedAgentException(msg)
 
-        # create the client-side stub agent we'll use to talk to the server-side agent.
+        # Now that the agents are loaded remotely create the client-side stub agent we'll use 
+        # to talk to the server-side agent.
         try:
             for n in self.nodes:
                 self.agents[n] = agent_stub(self.channels[n])
@@ -68,31 +78,39 @@ class DistributedAgent:
             self.channels[node] = None
 
     def blocking_call(self, method, args):
-        '''Call the given method with the given args for each agent in turn. Return all response once
-        all agents have responded.
-            arg method is a string that is the method to call.
-            arg args is a protbuf class instance that holds the args.
+        '''
+            Call the given method with the given args for each agent in turn. Return all response once
+            all agents have responded.
+                arg method is a string that is the method to call.
+                arg args is a protbuf class instance that holds the args.
+
+            Calls to all nodes will happend concurrently. 
+            blocking_call will only return once all nodes have responded.
         '''
         responses = DistributedAgentResponses()
         future_responses = {}
-        for node, agent in self.agents.items():
-            try:
+        calls = {}
+        with futures.ThreadPoolExecutor(len(self.agents)) as tpe:
+            for node, agent in self.agents.items():
                 func = getattr(agent, method, None)
                 if not func:
                     raise DistributedAgentException('No such method {} in agent {}.'.format(method, agent))
                 
                 log.debug('On node {}, calling: {}(...)'.format(node, method))
-                future_responses[node] = func.future(args) 
-            except grpc.RpcError as e:
-                log.critical('RPC error: {}'.format(e))
-                raise DistributedAgentException(e)
+                calls[tpe.submit(func, args)] = node
 
-        for node in self.agents.keys():
-            # still sequential responses, but at least they are called in parallel
-            r = future_responses[node].result()
-            comment = '' if not r.comment else ': {}'.format(r.comment)
-            log.debug('{}: {}() --> {}{}'.format(node.split('.')[0], method, r.success, comment))
-            responses.add(node, r)
+            for f in futures.as_completed(calls):
+                try: 
+                    node = calls[f]
+                    r = f.result()
+                except grpc.RpcError as e:
+                    # I'm not sure when this gets raised when using a thread pool executor...
+                    log.critical('RPC error: {}'.format(e))
+                    raise DistributedAgentException(e)
+
+                comment = '' if not r.comment else ': {}'.format(r.comment)
+                log.debug('{}: {}() --> {}{}'.format(node.split('.')[0], method, r.success, comment))
+                responses.add(node, r)
 
         return responses
 
