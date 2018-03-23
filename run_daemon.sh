@@ -14,6 +14,6 @@ elif [[ $1 == restart ]]; then
     pkill -f agent_server.py
 fi
 
-PYTHONPATH=${DIR}/dgrpc:${DIR}/dgrpc/pb ${DIR}/bin/agent_server.py -v > /tmp/dgrpc.log 2>&1 &
+PYTHONPATH=${DIR}/dgrpc:${DIR}/dgrpc/pb ${DIR}/bin/agent_server.py -c ${DIR}/etc/dgrpc.conf > /tmp/dgrpc.log 2>&1 &
 
 exit 0

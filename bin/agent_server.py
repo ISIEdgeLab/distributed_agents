@@ -5,47 +5,73 @@ import logging
 import time
 import argparse
 from subprocess import check_call, CalledProcessError
+from os import path, geteuid
 
 import grpc
 
-import agent_server_pb2 as pb
-import agent_server_pb2_grpc as pb_grpc
+from dgrpc import agent_server_pb2 as pb
+from dgrpc import agent_server_pb2_grpc as pb_grpc
 
 log = logging.getLogger(__name__)
 
+def apt_install(deps):
+    cmd = 'apt-get install -y {}'.format(' '.join(deps))
+    try:
+        log.info('attempting apt install via "{}"'.format(cmd))
+        check_call(cmd.split(), close_fds=True)
+    except CalledProcessError as e:
+        return False
+
+    log.info('successfully installed apt dependency "{}"'.format(' '.join(deps)))
+    return True
+
+def src_install(src_dir, script):
+    cmd = [path.join(src_dir, script), src_dir, '/tmp']
+    try:
+        log.info('attemping src install via "{}"'.format(' '.join(cmd)))
+        check_call(cmd, close_fds=True)
+    except CalledProcessError as e:
+        return False
+
+    log.info('successfully installed src dependency "{}"'.format(script))
+    return True
+
 class AgentServerServicer(pb_grpc.AgentServerServicer):
     '''A simple class that loads agents and their dependencies.'''
-    def __init__(self, server):
+    def __init__(self, server, config):
         log.debug('AgentServerServicer created.')
-        # we do not do dynamic loading at the moment. The servicer must know
-        # at runtime about all agents and dependencies that can be loaded.
-        self._servicer_map = {
-            'IperfAgent': {
-                'dependencies': [
-                    # 'iperf3'
-                ]
-            },
-            'HttpServerAgent': {
-                'dependencies': [
-                    'apache2',
-                    'libapache2-mod-wsgi',
-                    'python-flask'
-                ]
-            },
-            'TcpdumpAgent': {
-                'dependencies': [
-                    'python-netifaces', 'tcpdump'
-                ]
-            },
-            'HttpClientAgent': {
-                'dependencies': [
-                    'curl',
-                    'python3-pycurl',
-                    # 'libdeterdash'
-                ]
-            }
-        }
         self._server = server
+
+        with open(config) as fd:
+            self._config = yaml.load(fd)
+
+        self._handle_init_config()
+
+    def _handle_init_config(self):
+        # load all pre-load dependencies and handle other initializtion things from the config file.
+        if not 'logging' in self._config or not 'level' in self._config['logging']:
+            level = logging.INFO
+        else:
+            level = self._config['logging']['level']
+
+        if not 'logging' in self._config or not 'logfile' in self._config['logging']:
+            logfile = path.join('/', 'var', 'log', 'dgrcp.log')
+        else:
+            logfile = self._config['logging']['logfile']
+
+        logging.basicConfig(level=level, 
+                            filename=logfile,
+                            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                            datefmt='%m-%d %H:%M',
+                            filemode='w')
+        log.info('log level set to {}. loging to {}'.format(level, logfile))
+
+        for agent, aconf in self._config['agents'].items():
+            if aconf['dependencies']['when'] == 'preload':
+                success, comment = self._load_dependencies(agent, aconf['dependencies']['how'])
+                if not success:
+                    log.critical('Unable to preload {} dependencies: {}'.format(agent, comment))
+                    exit(99)   # what else to do?
 
     def Load(self, request, context):
         name = request.name
@@ -54,57 +80,56 @@ class AgentServerServicer(pb_grpc.AgentServerServicer):
 
         if not name in self._servicer_map:
             cmt = 'Unknown agent {}. Must be one of {}.'.format(
-                name, ', '.join(self._servicer_map.keys()))
+                name, ', '.join(self._config['agents'].keys()))
             return pb.Response(success=False, comment=cmt)
-
-        # install dependencies then load the servicer.
-        success, comment = self._install_dependencies(self._servicer_map[name]['dependencies'])
-        if not success:
-            return pb.Response(success=success, comment=comment)
 
         # very hacky. This will need to be replaced. Only import the agents when they are being loaded. 
         # GTL TODO: make this load dynamically. Maybe via an IDL file...
-        if name in self._servicer_map:
-            if name == 'TcpdumpAgent':
-                from tcpdump_agent_servicer import AddServicer as AddTcpdumpService
-                # self._servicer_map['TcpdumpAgent']['servicer'] = AddTcpdumpService
-                AddTcpdumpService(self._server)
-            elif name == 'HttpServerAgent':
-                from http_server_agent_servicer import AddServicer as AddHttpServerServicer
-                # self._servicer_map['HttpServerAgent']['servicer'] = AddHttpServerServicer
-                AddHttpServerServicer(self._server)
-            elif name == 'IperfAgent':
-                from iperf_agent_servicer import AddServicer as AddIPerfServicer
-                # self._servicer_map['IperfAgent']['servicer'] = AddIPerfServicer
-                AddIPerfServicer(self._server)
-            elif name == 'HttpClientAgent':
-                from http_client_agent_servicer import AddServicer as AddHttpClientServicer
-                # self._servicer_map['HttpClientAgent']['servicer'] = AddHttpClientServicer
-                AddHttpClientServicer(self._server)
-            else:
-                return pb.Response(success=False, comment='Unknown agent, {}, passed to agent server.'.format(name))
+        if name == 'TcpdumpAgent':
+            from tcpdump_agent_servicer import AddServicer as AddTcpdumpService
+            AddTcpdumpService(self._server)
+        elif name == 'HttpServerAgent':
+            from http_server_agent_servicer import AddServicer as AddHttpServerServicer
+            AddHttpServerServicer(self._server)
+        elif name == 'IperfAgent':
+            from iperf_agent_servicer import AddServicer as AddIPerfServicer
+            AddIPerfServicer(self._server)
+        elif name == 'HttpClientAgent':
+            from http_client_agent_servicer import AddServicer as AddHttpClientServicer
+            AddHttpClientServicer(self._server)
+        else:
+            return pb.Response(success=False, comment='Unknown agent, {}, passed to agent server.'.format(name))
         
         log.info('{} loaded.'.format(name))
         return pb.Response(success=True, comment='{} loaded.'.format(name))
 
-    def _install_dependencies(self, deps):
-        '''Install the given dependencies. Only support for APT at the moment.'''
-        cmd = 'apt-get install -y {}'.format(' '.join(deps))
-        try:
-            check_call(cmd.split(), close_fds=True)
-        except CalledProcessError as e:
-            comment = 'Error installing dependencies {}'.format(' '.join(deps))
-            log.error(comment)
-            return False, comment
+    def _load_dependencies(self, agent, installers):
+        success = False
+        for installer in installers:
+            if 'apt' in installer and installer['apt']:
+                if apt_install(installer['apt']):
+                    success = True
+                    break
+            elif 'src' in installer and installer['src']:
+                if src_install(self._config['dependency_sources'], installer['src']):
+                    success = True
+                    break
+            else:
+                return False, 'Misconfiguration: I do not know how to install dependencies like {}'.format(installer)
+            
+        if success:
+            return True, 'Installed {} dependencies via a {} install.'.format(agent, installer)
 
-        return True, None
+        return False, 'Unable to install {} dependency using {}'.format(agent, installers)
 
-def serve(port, poolsize):
+
+def serve(port, poolsize, config):
     # We start with only one servicer loaded, namely a servicer which knows how
     # to load other servicers (agents). 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=poolsize))
     server.add_insecure_port('[::]:{}'.format(port))
-    pb_grpc.add_AgentServerServicer_to_server(AgentServerServicer(server), server)
+    agent_server = AgentServerServicer(server, config)
+    pb_grpc.add_AgentServerServicer_to_server(agent_server, server)
     server.start()
 
     # server.start() does not block, so do nothing while waiting for exit signal.
@@ -120,11 +145,22 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--port', type=int, help='Port the agent server is listening on.', default=51000)
     parser.add_argument('--poolsize', type=int, default=10,
                         help='Number of threads to spawn to serve agent requests.')
-    parser.add_argument('-v', '--verbose', default=False, action='store_true',
-                        help='If given, turn on verbose logging.')
+    parser.add_argument('-c', '--config', type=str, default='/etc/dgrpc/dgrpc.conf',
+                        help='Path to configration file. Default=/etc/dgprc/dgrpc.conf')
     args = parser.parse_args()
 
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+    if geteuid() != 0:
+        exit('This needs to run as root.')
 
-    serve(args.port, args.poolsize)
+    # GTL - hacky, but the config file is YAML. 
+    try:
+        import yaml
+    except ImportError:
+        success = apt_install(['python3-yaml'])
+        if not success:
+            log.critical('Unable to install required python3 YAML library.')
+            exit(99)
+
+        import yaml
+
+    serve(args.port, args.poolsize, args.config)

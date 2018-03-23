@@ -35,7 +35,8 @@ message StopTrafficArgs {
 
 message StatusArgs {
     // if given, onlyu return the status of the given hosts, else return all.
-    repeated string hosts = 1;
+   repeated string hosts = 1;
+   int32 count = 2;  // How many messages to return (once a second or so...)
 }
 
 message StatusResponse {

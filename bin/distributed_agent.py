@@ -2,12 +2,11 @@ import logging
 import grpc
 import sys
 from concurrent import futures
-from threading import Thread
+from threading import Thread, Lock
 from queue import Queue
 
-sys.path.append('./pb')  # GTL ugh.
-import agent_server_pb2_grpc as pb_grpc
-import agent_server_pb2 as pb
+from . import agent_server_pb2_grpc as pb_grpc
+from . import agent_server_pb2 as pb
 
 log = logging.getLogger(__name__)
 
@@ -15,13 +14,19 @@ class DistributedAgentException(Exception):
     pass
 
 class DistributedAgent:
+    # These are "singleton" data instances used by all derivrd classes. No need for each
+    # agent instance to have it's own open channel to the services. 
+    # Communication with services.
+    _channels = {}
+    # command and control of meta-agent tasks.
+    _server_agents = {}
+
     def __init__(self, nodes, port):
         self.port = port
         self.nodes = nodes
 
-        self.channels = {}
+        # agents created by users
         self.agents = {}
-        self.server_agents = {}
 
     def load_agent(self, name, agent_stub):
         '''Takes a reference to a agent stub (client stub) class and creates channels to all 
@@ -34,13 +39,13 @@ class DistributedAgent:
             load_calls = {}
             with futures.ThreadPoolExecutor(len(self.nodes)) as fte:
                 for n in self.nodes:
-                    if not n in self.channels:
-                        self.channels[n] = grpc.insecure_channel('{}:{}'.format(n, self.port))
-                        self.server_agents[n] = pb_grpc.AgentServerStub(self.channels[n])
+                    if not n in DistributedAgent._channels:
+                        DistributedAgent._channels[n] = grpc.insecure_channel('{}:{}'.format(n, self.port))
+                        DistributedAgent._server_agents[n] = pb_grpc.AgentServerStub(DistributedAgent._channels[n])
                         
                         # submit calls to Load the server-soide agent to the future.
                         # The future call maps to the node name.
-                        load_calls[fte.submit(self.server_agents[n].Load, pb.AgentConfig(name=name))] = n
+                        load_calls[fte.submit(DistributedAgent._server_agents[n].Load, pb.AgentConfig(name=name))] = n
 
                 for f in futures.as_completed(load_calls):
                     n = load_calls[f]
@@ -59,7 +64,7 @@ class DistributedAgent:
         # to talk to the server-side agent.
         try:
             for n in self.nodes:
-                self.agents[n] = agent_stub(self.channels[n])
+                self.agents[n] = agent_stub(DistributedAgent._channels[n])
         except Exception as e:
             msg = 'Error creating agent client stub: {}'.format(e)
             log.critical(msg)
@@ -75,9 +80,9 @@ class DistributedAgent:
             del agent
             self.agents[node] = None
 
-        for node, channel in self.channels.items():
+        for node, channel in DistributedAgent._channels.items():
             del channel
-            self.channels[node] = None
+            DistributedAgent._channels[node] = None
 
     def blocking_call(self, method, args):
         '''

@@ -22,14 +22,11 @@ client_header = '''
 import logging
 import grpc
 
-import sys
-sys.path.append('./pb')  # GTL: Ugh. Find a better way to do this.
+from . import {}_pb2 as pb
+from . import {}_pb2_grpc as pb_grpc
 
-import {}_pb2 as pb
-import {}_pb2_grpc as pb_grpc
-
-from distributed_agent import DistributedAgent, DistributedAgentException
-from distributed_agent import DistributedAgentResponses as Responses
+from .distributed_agent import DistributedAgent, DistributedAgentException
+from .distributed_agent import DistributedAgentResponses as Responses
 
 log = logging.getLogger(__name__)
 
@@ -45,9 +42,6 @@ servicer_header = '''
 import logging
 import grpc
 import sys
-
-import sys
-sys.path.append('./pb')  # GTL: Ugh. Find a better way to do this.
 
 import {}_pb2 as pb
 import {}_pb2_grpc as pb_grpc

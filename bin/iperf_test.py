@@ -45,6 +45,7 @@ if __name__ == '__main__':
         if not responses.success():
             _error('Error running cmd {} on iperf: {}'.format(cmd, responses.status()))
 
+        # Read a few status messages. 
         for node, response in iperf.Status(['ct1', 'ct2']):
             log.info('Status from {}: {}'.format(node, response))
 

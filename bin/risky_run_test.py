@@ -3,9 +3,9 @@
 import logging
 import time
 
-from tcpdump_agent import TcpdumpAgent, TcpdumpAgentException
-from http_server_agent import HttpServerAgent, HttpServerAgentException
-from http_client_agent import HttpClientAgent, HttpClientAgentException
+from dgrpc.tcpdump_agent import TcpdumpAgent, TcpdumpAgentException
+from dgrpc.http_server_agent import HttpServerAgent, HttpServerAgentException
+from dgrpc.http_client_agent import HttpClientAgent, HttpClientAgentException
 
 log = logging.getLogger(__name__)
 logging.basicConfig(
