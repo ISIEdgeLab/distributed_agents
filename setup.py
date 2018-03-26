@@ -14,7 +14,7 @@ setup(
     requires=['PyYAML', 'grpcio'],
     scripts=['bin/agent_server.py'],
     data_files=[
-        ('/etc/dgrpc', ['etc/dgrpc.conf', 'etc/supervisord.conf'])
+        ('/etc/dgrpc', ['etc/dgrpc.conf']),
     ],
     classifiers=[
         'Development Status :: 1 - Alpha',

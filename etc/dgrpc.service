@@ -1,0 +1,15 @@
+[Unit]
+Description=A daemon that implements the service side of distributed agents.
+After=multi-user.target
+Documentation=https://github.com/ISIEdgeLab/distributed_agents
+
+[Service]
+User=root
+Restart=always
+Type=simple
+WorkingDirectory=/root
+ExecStartPre=apt-get install -y python3-yaml
+ExecStart=/usr/local/bin/agent_server.py
+
+[Install]
+WantedBy=multi-user.target
