@@ -1,0 +1,2 @@
+include dgrpc/traffic_gen.wsgi
+include dgrpc/traffic_gen
