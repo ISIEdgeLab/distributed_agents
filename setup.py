@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='dgrpc',
@@ -11,6 +11,7 @@ setup(
     url='https://github.com/ISIEdgeLab/distributed_agents',
     download_url='https://github.com/ISIEdgeLab/distributed_agents',
     packages=['dgrpc'],
+    include_package_data=True,
     requires=['PyYAML', 'grpcio'],
     scripts=['bin/agent_server.py'],
     data_files=[
