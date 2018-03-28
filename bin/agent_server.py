@@ -6,6 +6,7 @@ import time
 import argparse
 from subprocess import check_call, CalledProcessError
 from os import path, geteuid
+from importlib import import_module
 
 import grpc
 
@@ -41,6 +42,8 @@ class AgentServerServicer(pb_grpc.AgentServerServicer):
     def __init__(self, server, config):
         log.debug('AgentServerServicer created.')
         self._server = server
+
+        self._deps_loaded = []
 
         with open(config) as fd:
             self._config = yaml.load(fd)
@@ -78,32 +81,30 @@ class AgentServerServicer(pb_grpc.AgentServerServicer):
 
         log.info('Loading agent {}'.format(name))
 
-        if not name in self._servicer_map:
+        if not name in self._config['agents'].keys():
             cmt = 'Unknown agent {}. Must be one of {}.'.format(
                 name, ', '.join(self._config['agents'].keys()))
             return pb.Response(success=False, comment=cmt)
-
-        # very hacky. This will need to be replaced. Only import the agents when they are being loaded. 
-        # GTL TODO: make this load dynamically. Maybe via an IDL file...
-        if name == 'TcpdumpAgent':
-            from tcpdump_agent_servicer import AddServicer as AddTcpdumpService
-            AddTcpdumpService(self._server)
-        elif name == 'HttpServerAgent':
-            from http_server_agent_servicer import AddServicer as AddHttpServerServicer
-            AddHttpServerServicer(self._server)
-        elif name == 'IperfAgent':
-            from iperf_agent_servicer import AddServicer as AddIPerfServicer
-            AddIPerfServicer(self._server)
-        elif name == 'HttpClientAgent':
-            from http_client_agent_servicer import AddServicer as AddHttpClientServicer
-            AddHttpClientServicer(self._server)
-        else:
-            return pb.Response(success=False, comment='Unknown agent, {}, passed to agent server.'.format(name))
         
-        log.info('{} loaded.'.format(name))
+        conf = self._config['agents'][name]
+        if conf['dependencies']['when'] != 'preload':
+            success, comment = self._load_dependencies(name, conf['dependencies']['how'])
+            if not success:
+                log.critical('Unable to preload {} dependencies: {}'.format(agent, comment))
+                return pb.Response(success, comment)
+
+        # import the servicer module and let it add itself to our server. 
+        modname = self._config['agents'][name]['module']
+        mod = import_module('dgrpc.{}'.format(modname))
+        mod.AddServicer(self._server)
+        
+        log.info('{} loaded via {}'.format(name, modname))
         return pb.Response(success=True, comment='{} loaded.'.format(name))
 
     def _load_dependencies(self, agent, installers):
+        if agent in self._deps_loaded:
+            return True, '{} dependencies already installed.'
+
         success = False
         for installer in installers:
             if 'apt' in installer and installer['apt']:
@@ -118,6 +119,7 @@ class AgentServerServicer(pb_grpc.AgentServerServicer):
                 return False, 'Misconfiguration: I do not know how to install dependencies like {}'.format(installer)
             
         if success:
+            self._deps_loaded.append(agent)
             return True, 'Installed {} dependencies via a {} install.'.format(agent, installer)
 
         return False, 'Unable to install {} dependency using {}'.format(agent, installers)

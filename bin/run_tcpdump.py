@@ -4,7 +4,7 @@ import logging
 import time
 from sys import argv
 
-from tcpdump_agent import TcpdumpAgent, TcpdumpAgentException
+from dgrpc.tcpdump_agent import TcpdumpAgent, TcpdumpAgentException
 
 log = logging.getLogger(__name__)
 logging.basicConfig(

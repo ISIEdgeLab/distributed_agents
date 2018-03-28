@@ -3,8 +3,8 @@
 import logging
 import time
 
-from tcpdump_agent import TcpDumpAgent, TcpDumpAgentException
-from http_server_agent import HttpServerAgent, HttpServerAgentException
+from dgrpc.tcpdump_agent import TcpdumpAgent, TcpdumpAgentException
+from dgrpc.http_server_agent import HttpServerAgent, HttpServerAgentException
 
 log = logging.getLogger(__name__)
 logging.basicConfig(
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     # start tcpdump on vrouter and ct1
     nodes = ['vrouter.{}'.format(exp), 'ct1.{}'.format(exp)]
     try:
-        tcpdump_agent = TcpDumpAgent(nodes)
+        tcpdump_agent = TcpdumpAgent(nodes)
         responses = tcpdump_agent.Configure('/tmp/tcpdump.cap', '/tmp/tcpdump_agent.log')
         if not responses.success():
             exit_with_msg('Error configuring', tcpdump_agent, responses)

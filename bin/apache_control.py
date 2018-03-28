@@ -4,7 +4,7 @@ import logging
 import time
 from sys import argv
 
-from http_server_agent import HttpServerAgent, HttpServerAgentException
+from dgrpc.http_server_agent import HttpServerAgent, HttpServerAgentException
 
 log = logging.getLogger(__name__)
 logging.basicConfig(

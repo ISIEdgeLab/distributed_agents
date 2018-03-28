@@ -2,6 +2,8 @@
 
 # assumes doAll is in $PATH somewhere
 
+TMPDIR=/tmp/grpcio
+
 # install grpc and grpc python tools
 doAll -p sudo apt-get install -y python3-pip
 doAll -p sudo pip3 install --no-index -f /users/glawler/tmp/grpcio-tools-pip grpcio-tools

@@ -4,7 +4,7 @@ import logging
 import time
 from sys import argv
 
-from iperf_agent import IperfAgent, IperfAgentException
+from dgrpc.iperf_agent import IperfAgent, IperfAgentException
 
 log = logging.getLogger(__name__)
 logging.basicConfig(
@@ -46,8 +46,9 @@ if __name__ == '__main__':
             _error('Error running cmd {} on iperf: {}'.format(cmd, responses.status()))
 
         # Read a few status messages. 
-        for node, response in iperf.Status(['ct1', 'ct2']):
-            log.info('Status from {}: {}'.format(node, response))
+        if cmd == 'start':
+            for node, response in iperf.Status(['traf21', 'ct2']):
+                log.info('Status from {}: {}'.format(node, response))
 
     except IperfAgentException as e:
         _error('Exception when running: {}'.format(e))
