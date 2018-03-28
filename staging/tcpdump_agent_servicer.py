@@ -7,11 +7,8 @@ from subprocess import Popen, STDOUT, check_output, CalledProcessError
 from netifaces import interfaces, ifaddresses
 from socket import AF_INET, gethostbyname, gethostname
 
-import sys
-sys.path.append('./pb')
-
-import tcpdump_agent_pb2 as pb
-import tcpdump_agent_pb2_grpc as pb_grpc
+from . import tcpdump_agent_pb2 as pb
+from . import tcpdump_agent_pb2_grpc as pb_grpc
 
 log = logging.getLogger(__name__)
 

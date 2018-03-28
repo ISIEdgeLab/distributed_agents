@@ -15,10 +15,8 @@ from socket import gethostname
 from time import gmtime, strftime, sleep
 from subprocess import CalledProcessError, Popen, STDOUT, call
 
-sys.path.append('./pb')  # GTL: Ugh. Find a better way to do this.
-
-import iperf_agent_pb2 as pb
-import iperf_agent_pb2_grpc as pb_grpc
+from . import iperf_agent_pb2 as pb
+from . import iperf_agent_pb2_grpc as pb_grpc
 
 log = logging.getLogger(__name__)
 
@@ -112,7 +110,7 @@ class IperfAgentServicer(pb_grpc.IperfAgentServicer):
                   
                     if self._proc:
                         sleep(1)    # let it fail or no.
-                        if None == self._proc.poll():   # poll() returns None if proc running else exit value.
+                        if None != self._proc.poll():   # poll() returns None if proc running else exit value.
                             log.info('Error starting iperf. Trying again.')
                         else:
                              break
